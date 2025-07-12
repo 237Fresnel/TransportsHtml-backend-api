@@ -872,11 +872,3 @@ app.delete('/api/centroides/:id', async (req, res) => { // Delete Centroide
 // you would need dedicated endpoints (e.g., POST /api/projet_ville to link a project to a city)
 // and possibly more complex frontend forms/logic to manage these relationships.
 // The current implementation focuses on the main entity tables.
-
-
-// *** MODIFICATION : Utiliser process.env.PORT ***
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Serveur backend démarré sur http://localhost:${port}`);
-});
-// ******************************************
