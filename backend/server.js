@@ -167,6 +167,14 @@ async function getDataById(table, id) {
 }
 
 
+
+// Gérer la requête automatique pour le favicon.ico
+app.get('/favicon.ico', (req, res) => {
+    console.log('Requête reçue pour /favicon.ico'); // Optionnel: log pour confirmation
+    res.status(204).end(); // Renvoyer 204 No Content et terminer la réponse
+});
+
+
 // --- CRUD Routes for main entities ---
 
 // Ville (anciennement 'villes')
