@@ -1,48 +1,69 @@
 // Backend ExpressJS pour recevoir les données et les insérer dans PostgreSQL 'transports' database
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config(); // Assurez-vous que dotenv est requis en premier
 const { Pool } = require('pg');
 
 const app = express();
 
-// Middleware pour définir la Content-Security-Policy (peut être ajusté si nécessaire)
+// Middleware... (votre CSP et cors)
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self'; script-src 'self' 'unsafe-inline';" // Added 'unsafe-inline' for simplicity with inline event handlers like onclick in this example, adjust for better security in production
+    "default-src 'self'; img-src 'self'; script-src 'self' 'unsafe-inline';"
   );
   next();
 });
-
 app.use(cors());
-app.use(express.json()); // Middleware pour parser le JSON des requêtes
+app.use(express.json());
 
 // Connexion à PostgreSQL
-const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: process.env.PGPORT,
-  });
+let pool; // Declare pool outside try/catch so it's accessible later
 
-// *** MODIFICATION : Utiliser process.env.PORT ***
-const PORT = process.env.PORT || 3000; // Railway fournira la variable PORT
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-// ******************************************
+try {
+    pool = new Pool({
+        user: process.env.PGUSER,
+        host: process.env.PGHOST,
+        database: process.env.PGDATABASE,
+        password: process.env.PGPASSWORD,
+        port: process.env.PGPORT,
+    });
 
-// Vérification de la connexion à la base de données au démarrage du serveur
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('Erreur de connexion à la base de données :', err.stack);
-    } else {
-        console.log('Connexion à la base de données réussie !');
-        release(); // Libère le client immédiatement après le test de connexion
-    }
-});
+    console.log('Pool de connexions PostgreSQL créée.'); // Log creation
+
+    // Vérification de la connexion à la base de données au démarrage du serveur
+    // IMPORTANT: Gérer les erreurs de connexion ici
+    pool.connect((err, client, release) => {
+        if (err) {
+            console.error('!!! ERREUR CRITIQUE DE CONNEXION INITALE À LA BASE DE DONNÉES !!!', err.stack);
+            // Vous pourriez vouloir faire planter le processus si la connexion initiale échoue
+            // process.exit(1); // Optionnel: forcer l'arrêt si la DB est vitale
+        } else {
+            console.log('Connexion à la base de données réussie !'); // Cette ligne devrait apparaître si la pool peut se connecter
+            release(); // Libère le client immédiatement après le test
+        }
+    });
+
+     // Add global error handler for unhandled promise rejections
+     process.on('unhandledRejection', (reason, promise) => {
+         console.error('!!! UNHANDLED REJECTION !!!', reason, promise);
+         // Vous pourriez vouloir faire planter le processus sur une réjection non gérée en prod
+         // process.exit(1); // Optionnel
+     });
+
+     process.on('uncaughtException', (err) => {
+         console.error('!!! UNCAUGHT EXCEPTION !!!', err);
+         // Vous pourriez vouloir faire planter le processus sur une exception non catchée en prod
+         // process.exit(1); // Optionnel
+     });
+
+
+} catch (err) {
+    // Ceci attrapera les erreurs lors de la création de la Pool elle-même (ex: options invalides)
+    console.error('!!! ERREUR LORS DE LA CRÉATION DE LA POOL DE CONNEXIONS !!!', err.message, err.stack);
+    // Forcer l'arrêt car l'application ne peut pas fonctionner sans pool
+    process.exit(1);
+}
 
 // Helper function for insertions
 // Handles snake_case or camelCase column names by quoting if necessary
@@ -872,3 +893,9 @@ app.delete('/api/centroides/:id', async (req, res) => { // Delete Centroide
 // you would need dedicated endpoints (e.g., POST /api/projet_ville to link a project to a city)
 // and possibly more complex frontend forms/logic to manage these relationships.
 // The current implementation focuses on the main entity tables.
+
+// Démarrage du serveur Express
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
